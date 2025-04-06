@@ -15,7 +15,7 @@ jobs:
         c_compiler: [clang]
         cxx_compiler: [clang++]
         include:
-          - qt_ver: 6.7.3  
+          - qt_ver: 6.7.3
             qt_arch: mac_x64
 
     env:
@@ -33,7 +33,7 @@ jobs:
           version: ${{ matrix.qt_ver }}
           arch: ${{ matrix.qt_arch }}
           modules: 'qt5compat qtshadertools'
-     
+
       - name: Setup Ninja
         uses: seanmiddleditch/gha-setup-ninja@v3
         with:
@@ -69,10 +69,10 @@ jobs:
         run: |
           mkdir -p package
           cp -R ${{ steps.strings.outputs.build-output-dir }}/bin/Release/* package/
-          macdeployqt package/${{ targetName }}.app -verbose=3
+          macdeployqt package/${{ env.targetName }}.app -verbose=3
 
       - name: Check if svg file exists
-        run: if [ ! -f "${targetName}.svg" ]; then echo "File not found, creating..."; touch ${targetName}.svg; fi
+        run: if [ ! -f "${{ env.targetName }}.svg" ]; then echo "File not found, creating..."; touch ${{ env.targetName }}.svg; fi
 
       - name: Compress Package
         run: tar -czvf ${{ env.targetName }}.tar.gz -C package/ .
