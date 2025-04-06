@@ -68,7 +68,7 @@ jobs:
       - name: Create macOS Package
         run: |
           mkdir -p package
-          cp -R bin/Release/${{ env.targetName }}/* package/
+          cp -R ${{ github.workspace }}/bin/Release/${{ env.targetName }}/* package/
           macdeployqt package/${{ env.targetName }}.app -verbose=3
 
       - name: Check if svg file exists
