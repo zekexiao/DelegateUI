@@ -1,0 +1,94 @@
+name: CMake on macOS
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    permissions: write-all
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+        build_types: [Release]
+        c_compiler: [clang]
+        cxx_compiler: [clang++]
+        include:
+          - qt_ver: 6.7.3  
+            qt_arch: mac_x64
+
+    env:
+      targetName: Gallery
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ matrix.qt_ver }}
+          arch: ${{ matrix.qt_arch }}
+          modules: 'qt5compat qtshadertools'
+     
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v3
+        with:
+          version: 1.10.2
+
+      - name: Install homebrew dependencies
+        run: |
+          brew update
+          brew install libxcb
+
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        id: build
+        run: |
+          ninja --version
+          cmake --version
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -S ${{ github.workspace }} \
+            -DCMAKE_MESSAGE_LOG_LEVEL=STATUS \
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_types }} \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} \
+            -GNinja
+          cd ${{ steps.strings.outputs.build-output-dir }}
+          cmake --build . --config ${{ matrix.build_types }} --parallel --target all --
+
+      - name: Create macOS Package
+        run: |
+          mkdir -p package
+          cp -R ${{ steps.strings.outputs.build-output-dir }}/bin/Release/* package/
+          macdeployqt package/${{ targetName }}.app -verbose=3
+
+      - name: Check if svg file exists
+        run: if [ ! -f "${targetName}.svg" ]; then echo "File not found, creating..."; touch ${targetName}.svg; fi
+
+      - name: Compress Package
+        run: tar -czvf ${{ env.targetName }}.tar.gz -C package/ .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.targetName }}_${{ matrix.os }}_${{ matrix.qt_ver }}
+          path: ${{ env.targetName }}.tar.gz
+
+      - name: Upload Release
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.targetName }}.tar.gz
+          asset_name: ${{ env.targetName }}_${{ github.ref_name }}_${{ matrix.os }}_Qt${{ matrix.qt_ver }}.tar.gz
+          tag: ${{ github.ref }}
+          overwrite: true
