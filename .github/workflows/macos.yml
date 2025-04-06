@@ -67,21 +67,13 @@ jobs:
 
       - name: Create macOS Package
         run: |
-          mkdir -p package
-          cp -R ${{ github.workspace }}/bin/Release/${{ env.targetName }}/* package/
-          macdeployqt package/${{ env.targetName }}.app -verbose=3
-
-      - name: Check if svg file exists
-        run: if [ ! -f "${{ env.targetName }}.svg" ]; then echo "File not found, creating..."; touch ${{ env.targetName }}.svg; fi
-
-      - name: Compress Package
-        run: tar -czvf ${{ env.targetName }}.tar.gz -C package/ .
+          macdeployqt ${{ github.workspace }}/bin/Release/${{ env.targetName }}.app -dmg -verbose=3
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.targetName }}_${{ matrix.os }}_${{ matrix.qt_ver }}
-          path: ${{ env.targetName }}.tar.gz
+          path: ${{ github.workspace }}/bin/Release/${{ env.targetName }}.dmg
 
       - name: Upload Release
         if: startsWith(github.event.ref, 'refs/tags/')
